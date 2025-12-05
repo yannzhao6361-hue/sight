@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>专业级 E 字视力测试系统 (V12.0)</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background-color: #eef4f8;
+        }
+        #app-container {
+            max-width: 1000px;
+            margin: 20px auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            background-color: #fff;
+            padding: 20px;
+        }
+        #e-chart {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+            background-color: #eee;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        #e-sign {
+            font-family: monospace;
+            font-size: 200px; 
+            font-weight: bold;
+            line-height: 1;
+            transform-origin: center center;
+            color: #000;
+        }
+        /* E字旋转样式 */
+        .rotated-0 { transform: rotate(0deg); }
+        .rotated-90 { transform: rotate(90deg); }
+        .rotated-180 { transform: rotate(180deg); }
+        .rotated-270 { transform: rotate(270deg); }
+
+        .control-section {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f7f7f7;
+            flex-wrap: wrap;
+        }
+        .input-group { margin: 5px 10px; }
+        .input-group label { font-weight: bold; }
+
+        .status-box {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .status-info { background-color: #e0f7fa; color: #007bb6; }
+        .status-error { background-color: #ffebee; color: #d32f2f; }
+        .status-success { background-color: #e8f5e9; color: #388e3c; }
+
+        .key-prompt {
+            background-color: #333;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            margin: 0 5px;
+            display: inline-block;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        /* 蓝色校准 E 字样式 */
+        #calibration-e {
+            color: blue;
+            line-height: 1;
+            font-weight: bold;
+            display: inline-block;
+        }
+        /* 默认隐藏测试区域 */
+        #test-setup, #test-area, #results-section, #advice-section {
+            display: none; 
+        }
+        .action-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            margin: 5px;
+            white-space: nowrap; 
+        }
+        #direction-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            margin: 15px 0;
+        }
+        #direction-controls .row {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+        #direction-controls button {
+            width: 80px;
+            height: 40px;
+            margin: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #03a9f4;
+            color: white;
+        }
+
+        /* 建议报告样式 */
+        #advice-section {
+            text-align: left;
+            margin-top: 25px;
+            padding: 20px;
+            border: 2px solid #00bcd4;
+            border-radius: 8px;
+            background-color: #e0f7fa;
+        }
+        #advice-section h3 {
+            color: #007bb6;
+            border-bottom: 2px solid #00bcd4;
+            padding-bottom: 5px;
+            margin-top: 0;
+        }
+        #advice-list li {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        /* 版权声明样式 */
+        #footer-copyright {
+            margin-top: 30px;
+            padding: 10px 0;
+            border-top: 1px solid #ccc;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+<div id="app-container">
+    <h1 style="background-color: #e0ffff;">专业级AI视力测试系统   </h1>
+
+    <div id="calibration-section">
+        <h2>📏 第一步：屏幕物理尺寸校准 (关键!)</h2>
+ 
+
+        <p>请使用尺子精确测量下方蓝色 E 字的**实际物理高度**，并在下方输入您测得的**毫米数 (mm)**：</p>
+        <div id="e-chart" style="min-height: 150px;">
+            <div id="calibration-e" style="font-size: 50px;">E</div> 
+        </div>
+        <p>标准高度 (5.0视力在 5m 处) 应为 **7.27 mm**。</p>
+        <label for="measured-height">实测蓝色 E 字高度 (mm): </label>
+        <input type="number" id="measured-height" value="10" step="0.5" style="width: 80px;">
+        <button id="calibrate-btn" onclick="window.calibrateScreen()" class="action-button" style="background-color: #03a9f4; color: white;">执行校准</button>
+        <p id="calibration-status" class="status-info">等待校准...</p>
+    </div>
+
+    <div id="test-setup">
+        <h2>👤 第二步：信息与环境准备</h2>
+        <div class="control-section">
+            <div class="input-group">
+                <label>姓名:</label> <input type="text" id="user-name" value="青少年测试者" required>
+            </div>
+            <div class="input-group">
+                <label>测试距离 (米):</label> <input type="number" id="test-distance" value="5" step="0.5" style="width: 60px;">
+            </div>
+            <div class="input-group">
+                <label>当前测试眼:</label> <span id="current-eye-display" style="color: red; font-size: 1.2em;">右眼 (OD)</span>
+            </div>
+            <button id="start-current-eye-btn" class="action-button" style="background-color: #4CAF50; color: white;">开始右眼测试</button>
+            <button id="reset-calibration-btn" class="action-button" style="background-color: #ff9800; color: white;">重新校准</button>
+        </div>
+    </div>
+
+    <div id="test-area">
+        <h2>👀 第三步：E 字视力测试</h2>
+        <div id="e-chart" style="min-height: 400px;">
+            <div id="e-sign">E</div>
+        </div>
+        <div class="status-box status-info">
+            当前视力等级: <span id="current-level-display" style="font-size: 1.5em;"></span>
+        </div>
+
+        <div id="direction-controls">
+            <div class="row">
+                <button data-direction="LEFT">⬆️ 上</button>
+            </div>
+            <div class="row">
+                <button data-direction="DOWN">⬅️ 左</button>
+                <button data-direction="UP">右 ➡️</button>
+            </div>
+            <div class="row">
+                <button data-direction="RIGHT">⬇️ 下</button>
+            </div>
+        </div>
+        <div class="control-section">
+            <h3>快捷键操作台</h3>
+            <p>（适用于操作员快速记录，无需眼睛离开被测者）</p>
+            <p>
+                **正确:** <span class="key-prompt">空格 (Space)</span> | **错误:** <span class="key-prompt">Enter</span> | **结束本眼测试:** <span class="key-prompt">Esc</span>
+            </p>
+            <p>
+                **当前行记录:** 正确 <span id="correct-count" style="color: green;">0</span>, 错误 <span id="error-count" style="color: red;">0</span>
+            </p>
+        </div>
+    </div>
+
+    <div id="results-section">
+        <h2>📋 第四步：测试结果与报告</h2>
+        <table id="result-table">
+            <tr>
+                <th>姓名</th>
+                <th>测试距离</th>
+                <th>右眼视力 (OD)</th>
+                <th>左眼视力 (OS)</th>
+                <th>测试日期</th>
+            </tr>
+            <tr>
+                <td id="res-name"></td>
+                <td id="res-distance"></td>
+                <td id="res-right">待测</td>
+                <td id="res-left">待测</td>
+                <td id="res-date"></td>
+            </tr>
+        </table>
+        <div style="margin-top: 20px;">
+            <button onclick="printReport()" class="action-button" style="background-color: #9c27b0; color: white;">打印报告</button>
+        </div>
+    </div>
+    
+    <div id="advice-section">
+        <h3>💡 视力保护和调理建议</h3>
+        <ul id="advice-list">
+            </ul>
+    </div>
+
+    <div id="footer-copyright">
+        &copy; 2023 - <span id="current-year"></span> 专业级AI视力测试系统 | 版权所有
+        <br>
+        地址：北京市东城区和平新城物美一楼铭熙视光中心            联系电话：3552346520
+    </div>
+    </div>
+
+    <script>
+        const VISION_CHART = [
+            { level: '4.3', acuity: 0.2, sizeMM: 36.36 },
+            { level: '4.4', acuity: 0.25, sizeMM: 29.08 },
+            { level: '4.5', acuity: 0.3, sizeMM: 24.24 },
+            { level: '4.6', acuity: 0.4, sizeMM: 18.18 },
+            { level: '4.7', acuity: 0.5, sizeMM: 14.54 },
+            { level: '4.8', acuity: 0.6, sizeMM: 12.12 },
+            { level: '4.9', acuity: 0.8, sizeMM: 9.09 },
+            { level: '5.0', acuity: 1.0, sizeMM: 7.27 }, 
+            { level: '5.1', acuity: 1.2, sizeMM: 6.06 },
+            { level: '5.2', acuity: 1.5, sizeMM: 4.85 }
+        ];
+
+        const CALIBRATION_E_SIZE_PX = 50; 
+
+        let pixelsPerMM = 0; 
+        let currentLevelIndex = 0; 
+        let currentEye = 'right'; 
+        let currentTargetDirection = ''; 
+        let rowRecord = []; 
+        let testResults = { right: '待测', left: '待测' };
+        let isTesting = false;
+
+        // DOM 元素引用
+        const eSign = document.getElementById('e-sign');
+        const calibrationE = document.getElementById('calibration-e');
+        const calibrationBtn = document.getElementById('calibrate-btn');
+        const resetCalibrationBtn = document.getElementById('reset-calibration-btn');
+        const startCurrentEyeBtn = document.getElementById('start-current-eye-btn'); 
+        const directionControls = document.getElementById('direction-controls'); 
+        const currentLevelDisplay = document.getElementById('current-level-display');
+        const currentEyeDisplay = document.getElementById('current-eye-display');
+        const correctCountDisplay = document.getElementById('correct-count');
+        const errorCountDisplay = document.getElementById('error-count');
+        const calibrationStatus = document.getElementById('calibration-status');
+        const adviceSection = document.getElementById('advice-section'); 
+        const adviceList = document.getElementById('advice-list'); 
+
+        // --- 核心校准逻辑 (定义为全局函数，以便内联 onclick 访问) ---
+        window.calibrateScreen = function() {
+            console.log('Calibration button clicked! (From JS or Onclick)');
+
+            if (pixelsPerMM > 0 && calibrationBtn.textContent === '已校准') {
+                 console.log('Already calibrated. Ignoring click.');
+                 return;
+            }
+            
+            const measuredHeight = parseFloat(document.getElementById('measured-height').value);
+            
+            if (isNaN(measuredHeight) || measuredHeight <= 0) {
+                calibrationStatus.className = 'status-error';
+                calibrationStatus.textContent = '输入无效，请输入大于0的实测高度 (mm)。';
+                console.error('Calibration failed: Invalid input.');
+                return;
+            }
+
+            pixelsPerMM = CALIBRATION_E_SIZE_PX / measuredHeight;
+
+            calibrationStatus.className = 'status-success';
+            calibrationStatus.textContent = `校准成功！屏幕密度约为 ${pixelsPerMM.toFixed(2)} px/mm。`;
+            
+            calibrationBtn.style.backgroundColor = '#4CAF50';
+            calibrationBtn.textContent = '已校准';
+
+            document.getElementById('calibration-section').style.display = 'none';
+            document.getElementById('test-setup').style.display = 'block';
+            document.getElementById('results-section').style.display = 'block';
+            
+            calibrationE.style.display = 'none'; 
+            
+            document.getElementById('res-name').textContent = document.getElementById('user-name').value;
+            document.getElementById('res-distance').textContent = document.getElementById('test-distance').value + ' m';
+            document.getElementById('res-date').textContent = new Date().toLocaleDateString();
+            
+            console.log(`Calibration successful: ${pixelsPerMM.toFixed(2)} px/mm.`);
+        }
+
+        // --- 重置校准 ---
+        function resetCalibration() {
+            if (isTesting) {
+                alert('请先完成或结束当前眼的测试！');
+                return;
+            }
+            if (!confirm('确定要重新校准吗？这将清除当前的校准数据。')) {
+                return;
+            }
+            
+            pixelsPerMM = 0;
+            calibrationStatus.className = 'status-info';
+            calibrationStatus.textContent = '等待校准...';
+            
+            calibrationBtn.style.backgroundColor = '#03a9f4';
+            calibrationBtn.textContent = '执行校准';
+            
+            document.getElementById('calibration-section').style.display = 'block';
+            document.getElementById('test-setup').style.display = 'none';
+            document.getElementById('test-area').style.display = 'none';
+            document.getElementById('results-section').style.display = 'none';
+            adviceSection.style.display = 'none'; 
+            
+            calibrationE.style.display = 'inline-block';
+        }
+
+        // --- 测试流程控制 ---
+
+        function startTest(eye) {
+            if (pixelsPerMM === 0) {
+                alert('请先完成屏幕校准！');
+                return;
+            }
+            
+            currentEye = eye;
+            currentEyeDisplay.textContent = eye === 'right' ? '右眼 (OD)' : '左眼 (OS)';
+
+            if (testResults[eye] !== '待测') {
+                if (!confirm(`您已测试过${currentEyeDisplay.textContent}，确定重新测试吗？`)) {
+                    return;
+                }
+            }
+            
+            adviceSection.style.display = 'none'; 
+
+            isTesting = true;
+            currentLevelIndex = 0; 
+            rowRecord = [];
+            
+            document.getElementById('test-setup').style.display = 'none';
+            document.getElementById('test-area').style.display = 'block';
+            document.getElementById('results-section').style.display = 'none';
+
+            updateEsignAndStatus(currentLevelIndex);
+            generateESign();
+        }
+
+        function updateEsignAndStatus(index) {
+            const current = VISION_CHART[index];
+            const sizePx = current.sizeMM * pixelsPerMM;
+            eSign.style.fontSize = `${sizePx}px`;
+            currentLevelDisplay.textContent = `${current.level} (${current.acuity}) | E字高: ${current.sizeMM.toFixed(2)} mm`;
+            correctCountDisplay.textContent = rowRecord.filter(r => r).length;
+            errorCountDisplay.textContent = rowRecord.filter(r => !r).length;
+        }
+
+        function generateESign() {
+            const directions = ['UP', 'RIGHT', 'DOWN', 'LEFT'];
+            const randomDirection = directions[Math.floor(Math.random() * directions.length)];
+            currentTargetDirection = randomDirection;
+
+            const rotationMap = { 'UP': 0, 'RIGHT': 90, 'DOWN': 180, 'LEFT': 270 };
+            eSign.className = `rotated-${rotationMap[randomDirection]}`;
+        }
+
+        function recordAnswerDirection(direction) {
+            if (!isTesting) return;
+            const isCorrect = direction === currentTargetDirection;
+            recordAnswer(isCorrect); 
+        }
+
+        function recordAnswer(isCorrect) {
+            if (!isTesting) return;
+            rowRecord.push(isCorrect);
+            correctCountDisplay.textContent = rowRecord.filter(r => r).length;
+            errorCountDisplay.textContent = rowRecord.filter(r => !r).length;
+            checkRowCompletion();
+        }
+
+        function checkRowCompletion() {
+            const currentCorrect = rowRecord.filter(r => r).length;
+            const currentError = rowRecord.filter(r => !r).length;
+            
+            if (currentError >= 3) {
+                endTestEye(currentLevelIndex === 0 ? 0 : currentLevelIndex - 1); 
+                return;
+            } 
+            
+            if (currentCorrect >= 5) {
+                
+                if (currentLevelIndex === VISION_CHART.length - 1) {
+                    endTestEye(currentLevelIndex); 
+                    return;
+                }
+                
+                alert(`视力 ${VISION_CHART[currentLevelIndex].level} 通过！开始测试下一行 (${VISION_CHART[currentLevelIndex + 1].level})`);
+                currentLevelIndex++;
+                rowRecord = []; 
+                updateEsignAndStatus(currentLevelIndex);
+                generateESign();
+
+            } else if (currentCorrect + currentError >= 8) {
+                endTestEye(currentLevelIndex === 0 ? 0 : currentLevelIndex - 1);
+            } else {
+                generateESign();
+            }
+        }
+
+        function endTestEye(resultIndex) {
+            isTesting = false;
+            let finalLevel = '';
+
+            if (resultIndex === 0 && rowRecord.filter(r => !r).length >= 3) {
+                finalLevel = '< 4.3';
+            } else if (resultIndex < 0) {
+                 finalLevel = '< 4.3';
+            } else {
+                finalLevel = VISION_CHART[resultIndex].level;
+            }
+            
+            alert(`${currentEyeDisplay.textContent} 测试结束，视力结果为：${finalLevel}`);
+            
+            testResults[currentEye] = finalLevel;
+            
+            document.getElementById('res-right').textContent = testResults.right;
+            document.getElementById('res-left').textContent = testResults.left;
+
+            document.getElementById('test-area').style.display = 'none';
+            document.getElementById('results-section').style.display = 'block';
+            
+            document.getElementById('test-setup').style.display = 'block';
+            
+            // 引导下一次测试
+            if (currentEye === 'right' && testResults.left === '待测') {
+                currentEye = 'left';
+                currentEyeDisplay.textContent = '左眼 (OS)';
+                startCurrentEyeBtn.textContent = '开始左眼测试';
+            } else {
+                currentEye = 'right'; 
+                currentEyeDisplay.textContent = '右眼 (OD)';
+                startCurrentEyeBtn.textContent = '开始右眼测试';
+            }
+
+            // 如果左右眼都测完了，生成建议
+            if (testResults.right !== '待测' && testResults.left !== '待测') {
+                generateAdvice();
+            }
+        }
+
+        // --- 核心：根据测试结果生成建议 ---
+        function generateAdvice() {
+            adviceList.innerHTML = '';
+            
+            const getNumericLevel = (result) => {
+                const num = parseFloat(result);
+                return isNaN(num) ? 4.0 : num;
+            };
+
+            const rightLevel = getNumericLevel(testResults.right);
+            const leftLevel = getNumericLevel(testResults.left);
+            
+            let adviceHtml = '';
+            let generalAdvice = [];
+            let needsAttention = false;
+
+            // 1. 视力等级判断 (以较差的眼睛为准)
+            const minLevel = Math.min(rightLevel, leftLevel);
+            
+            if (minLevel >= 5.0) {
+                adviceHtml += '<li>🎉 **视力优秀 (5.0 及以上):** 目前视力状况良好，请继续保持良好的用眼习惯。</li>';
+            } else if (minLevel >= 4.7) {
+                adviceHtml += '<li>👍 **视力良好 (4.7-4.9):** 视力开始出现波动或轻微下降趋势。**需要重点关注和调整用眼习惯。**</li>';
+                needsAttention = true;
+            } else if (minLevel >= 4.5) {
+                adviceHtml += '<li>⚠️ **视力欠佳 (4.5-4.6):** 可能是轻度近视或视疲劳。**建议到专业机构进行散瞳验光检查。**</li>';
+                needsAttention = true;
+            } else { 
+                 adviceHtml += '<li>🚨 **视力较差 (< 4.5):** 视力明显低于正常水平，有中度近视或更复杂眼病的风险。**可前往铭熙视光中心进行调理**</li>';
+                 needsAttention = true;
+            }
+
+            // 2. 差异性判断 
+            if (rightLevel > 4.3 && leftLevel > 4.3 && Math.abs(rightLevel - leftLevel) > 0.3) {
+                generalAdvice.push('**双眼视力差异大:** 存在明显的屈光参差，可能导致视觉疲劳或单眼弱视风险，**必须咨询专业医生进行矫正。**');
+            }
+
+            // 3. 通用保护建议
+            generalAdvice.push('**户外活动:** 坚持每天 2 小时以上的户外阳光活动，这是预防近视最有效的方法之一。');
+            generalAdvice.push('**用眼距离:** 保持“一尺、一拳、一寸”的原则（书本离眼一尺，胸口离桌一拳，握笔处离指尖一寸）。');
+            generalAdvice.push('**休息原则:** 严格执行“20-20-20”法则：每近距离用眼 20 分钟，眺望 20 英尺（6米）以外至少 20 秒。');
+            generalAdvice.push('**充足睡眠:** 保证充足、高质量的睡眠，让眼部肌肉得到充分休息。');
+            generalAdvice.push('**饮食调理:** 多吃富含维生素 A (胡萝卜、深绿色蔬菜) 和叶黄素 (玉米、蛋黄、绿叶蔬菜) 的食物。');
+            
+            if (needsAttention) {
+                generalAdvice.push('**定期复查:** 建议每 3-6 个月进行一次专业的视力检查和眼轴测量。');
+            }
+
+            // 渲染建议
+            adviceHtml += generalAdvice.map(item => `<li>${item}</li>`).join('');
+            
+            adviceList.innerHTML = adviceHtml;
+            adviceSection.style.display = 'block';
+        }
+
+
+        function printReport() {
+            window.print();
+        }
+
+        // --- 核心事件绑定 (使用 DOMContentLoaded) ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // 设置当前年份
+            document.getElementById('current-year').textContent = new Date().getFullYear();
+            
+            // 1. 绑定 校准按钮 (虽然已设置 onclick，但保留 addEventListener 作为第二道保险)
+            calibrationBtn.addEventListener('click', window.calibrateScreen);
+
+            // 2. 绑定 重新校准按钮
+            resetCalibrationBtn.addEventListener('click', resetCalibration);
+            
+            // 3. 绑定 "开始当前眼测试" 按钮
+            startCurrentEyeBtn.addEventListener('click', () => startTest(currentEye)); 
+
+            // 4. 绑定 键盘快捷键
+            document.addEventListener('keydown', (e) => {
+                if (!isTesting) return;
+                
+                if (e.key === ' ') { 
+                    e.preventDefault();
+                    recordAnswer(true); 
+                } else if (e.key === 'Enter') { 
+                    e.preventDefault();
+                    recordAnswer(false); 
+                } else if (e.key === 'Escape') { 
+                    endTestEye(currentLevelIndex === 0 ? 0 : currentLevelIndex - 1); 
+                }
+            });
+
+            // 5. 绑定 方向控制按钮 (事件委托)
+            directionControls.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON' && e.target.hasAttribute('data-direction')) {
+                    const direction = e.target.getAttribute('data-direction');
+                    recordAnswerDirection(direction);
+                }
+            });
+            
+            // 初始设置第二步按钮文本
+            startCurrentEyeBtn.textContent = '开始右眼测试';
+        });
+    </script>
+</body>
+</html>
